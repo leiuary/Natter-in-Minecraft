@@ -20,7 +20,7 @@ Checking UDP NAT...                  [   OK   ] ... NAT Type: 1
 ## 我要怎么使用
 
 1. 光猫改桥接，路由器拨号上网。路由器开启 UPnP 或 DMZ 功能，再使用 natter-check 验证。某些路由器可能会限制 NAT 类型。
-2. 将本仓库下载解压到服务器启动脚本同级文件夹，将`nat.sh`复制到Natter-in-Minecraft文件夹外并打开进行配置。
+2. 将releases下载解压到服务器启动脚本同级文件夹，将`nat.sh`复制到Natter-in-Minecraft文件夹外并打开进行配置。
 3. 使用 DDNS 工具（如DDNS-GO）设置 IP地址 解析。
 4. 配置 SRV 解析脚本（默认使用 srv 文件夹下阿里云配置），使服务器获取正确的端口。
 5. 运行`nat.sh`。

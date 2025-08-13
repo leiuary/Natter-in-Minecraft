@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Natter 连接管理</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --dark-color: #2c3e50;
+            --light-color: #ecf0f1;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--dark-color), var(--primary-color));
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-bottom: 1.5rem;
+            border: none;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .status-running {
+            background-color: rgba(46, 204, 113, 0.15);
+            color: var(--success-color);
+        }
+        
+        .status-stopped {
+            background-color: rgba(231, 76, 60, 0.15);
+            color: var(--danger-color);
+        }
+        
+        .auto-detected {
+            border-left: 4px solid var(--warning-color);
+        }
+        
+        .btn-action {
+            min-width: 90px;
+            margin: 0 5px;
+        }
+        
+        .connection-details {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .log-container {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            max-height: 60vh;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .footer {
+            background-color: var(--dark-color);
+            color: white;
+            padding: 1.5rem 0;
+            margin-top: 3rem;
+        }
+
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="bi bi-router"></i> Natter 连接管理</h1>
+                    <p class="lead">管理您的所有 NAT 打洞连接</p>
+                </div>
+                <div>
+                    <button class="btn btn-light btn-lg" onclick="showCreateModal()">
+                        <i class="bi bi-plus-circle"></i> 新建连接
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 系统信息卡片 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-connections">0</div>
+                    <div class="stat-label">总连接数</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" id="running-connections">0</div>
+                    <div class="stat-label">运行中连接</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" id="auto-detected">0</div>
+                    <div class="stat-label">自动检测连接</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" id="system-status">正常</div>
+                    <div class="stat-label">系统状态</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 连接列表 -->
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-list"></i> 连接列表</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadConnections()">
+                        <i class="bi bi-arrow-repeat"></i> 刷新
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>命令</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="connections-list">
+                            <!-- 动态加载内容 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建/编辑连接模态框 -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title"><i class="bi bi-plus-circle"></i> 新建 Natter 连接</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="connection-id">
+                    <div class="mb-3">
+                        <label class="form-label">连接名称</label>
+                        <input type="text" class="form-control" id="connection-name" placeholder="例如: Web 服务器端口">
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="autostart-switch">
+                        <label class="form-check-label" for="autostart-switch">服务启动时自动运行此连接</label>
+                    </div>
+
+                    <ul class="nav nav-tabs mb-3" id="command-mode-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="params-mode-tab" data-bs-toggle="tab" data-bs-target="#params-mode" type="button" role="tab">参数模式</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="direct-mode-tab" data-bs-toggle="tab" data-bs-target="#direct-mode" type="button" role="tab">直接输入</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="params-mode" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>常规选项</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">目标操作系统</label>
+                                        <select class="form-select" id="param-target_os">
+                                            <option value="linux">Linux</option>
+                                            <option value="windows">Windows</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="param-v"><label for="param-v">详细模式 (-v)</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="param-q"><label for="param-q">地址改变时退出 (-q)</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="param-u"><label for="param-u">UDP 模式 (-u)</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="param-U"><label for="param-U">启用 UPnP (-U)</label></div>
+                                    <div class="mb-2"><label class="form-label">保活间隔 (-k)</label><input type="number" class="form-control" id="param-k" placeholder="默认 15"></div>
+                                    <div class="mb-2"><label class="form-label">STUN 服务器 (-s)</label><input type="text" class="form-control" id="param-s" placeholder="可选"></div>
+                                    <div class="mb-2"><label class="form-label">保活服务器 (-h)</label><input type="text" class="form-control" id="param-h" placeholder="可选"></div>
+                                    <div class="mb-2"><label class="form-label">通知脚本 (-e)</label><input type="text" class="form-control" id="param-e" placeholder="可选"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>绑定与转发</h6>
+                                    <div class="mb-2"><label class="form-label">绑定接口 (-i)</label><input type="text" class="form-control" id="param-i" placeholder="默认 0.0.0.0"></div>
+                                    <div class="mb-2"><label class="form-label">绑定端口 (-b)</label><input type="number" class="form-control" id="param-b" placeholder="默认随机"></div>
+                                    <div class="mb-2"><label class="form-label">转发方法 (-m)</label>
+                                        <select class="form-select" id="param-m">
+                                            <option value="">自动</option>
+                                            <option value="none">none</option>
+                                            <option value="test">test</option>
+                                            <option value="iptables" class="linux-only">iptables</option>
+                                            <option value="nftables" class="linux-only">nftables</option>
+                                            <option value="socat">socat</option>
+                                            <option value="gost">gost</option>
+                                            <option value="socket">socket</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2"><label class="form-label">转发目标IP (-t)</label><input type="text" class="form-control" id="param-t" placeholder="默认本机"></div>
+                                    <div class="mb-2"><label class="form-label">转发目标端口 (-p)</label><input type="number" class="form-control" id="param-p" placeholder="可选"></div>
+                                    <div class="form-check"><input class="form-check-input" type="checkbox" id="param-r"><label for="param-r">重试直至目标开放 (-r)</label></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="direct-mode" role="tabpanel">
+                            <div class="mb-3">
+                                <label class="form-label">Natter 命令</label>
+                                <textarea class="form-control" id="connection-command" rows="5" placeholder="例如: python natter.py -m iptables -p 80"></textarea>
+                                <div class="form-text">请确保命令正确，系统将直接执行此命令。参数模式中的设置将被忽略。</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="save-connection-btn">保存连接</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日志查看模态框 -->
+    <div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logModalTitle">连接日志</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="log-container" id="log-content"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="refreshLog()">
+                        <i class="bi bi-arrow-repeat"></i> 刷新日志
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container text-center">
+            <p class="mb-0">Natter Web Admin | &copy; 2023-2024 Natter 项目</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let currentLogId = null;
+    let connectionsCache = [];
+    const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadConnections();
+        setInterval(loadConnections, 10000);
+        document.getElementById('save-connection-btn').addEventListener('click', saveConnection);
+        document.getElementById('param-target_os').addEventListener('change', toggleForwardingMethods);
+    });
+
+    function showCreateModal() {
+        document.getElementById('editModal').querySelector('form')?.reset();
+        document.getElementById('modal-title').textContent = '新建 Natter 连接';
+        document.getElementById('connection-id').value = '';
+        document.getElementById('connection-name').value = '';
+        document.getElementById('autostart-switch').checked = false;
+        document.getElementById('connection-command').value = '';
+        clearParamsForm();
+        
+        // 默认显示参数模式
+        new bootstrap.Tab(document.getElementById('params-mode-tab')).show();
+        document.getElementById('param-target_os').value = 'linux'; // 默认Linux
+        toggleForwardingMethods();
+        editModal.show();
+    }
+
+    function showEditModal(connId) {
+        const conn = connectionsCache.find(c => c.id === connId);
+        if (!conn) return;
+
+        document.getElementById('modal-title').textContent = '编辑连接 - ' + conn.name;
+        document.getElementById('connection-id').value = conn.id;
+        document.getElementById('connection-name').value = conn.name;
+        document.getElementById('autostart-switch').checked = conn.autostart;
+        document.getElementById('connection-command').value = conn.command;
+
+        if (conn.params) {
+            const params = JSON.parse(conn.params);
+            document.getElementById('param-target_os').value = params.target_os || 'linux';
+            fillParamsForm(params);
+            new bootstrap.Tab(document.getElementById('params-mode-tab')).show();
+        } else {
+            clearParamsForm();
+            new bootstrap.Tab(document.getElementById('direct-mode-tab')).show();
+        }
+        toggleForwardingMethods();
+        editModal.show();
+    }
+    
+    function clearParamsForm() {
+        document.querySelectorAll('#params-mode input[type="checkbox"]').forEach(el => el.checked = false);
+        document.querySelectorAll('#params-mode input[type="text"], #params-mode input[type="number"], #params-mode select').forEach(el => el.value = '');
+    }
+
+    function fillParamsForm(params) {
+        clearParamsForm();
+        for (const key in params) {
+            const el = document.getElementById('param-' + key);
+            if (!el) continue;
+            if (el.type === 'checkbox') {
+                el.checked = params[key];
+            } else {
+                el.value = params[key];
+            }
+        }
+    }
+
+    async function loadConnections() {
+        try {
+            const response = await fetch('/api/connections');
+            connectionsCache = await response.json();
+            
+            updateStats(connectionsCache);
+            renderConnections(connectionsCache);
+        } catch (error) {
+            console.error('加载连接失败:', error);
+            showAlert('danger', '加载连接失败，请检查网络连接');
+        }
+    }
+
+    function updateStats(connections) {
+        document.getElementById('total-connections').textContent = connections.filter(c => !c.is_auto_detected).length;
+        document.getElementById('running-connections').textContent = connections.filter(c => c.status === 'running').length;
+        document.getElementById('auto-detected').textContent = connections.filter(c => c.is_auto_detected).length;
+    }
+
+    function renderConnections(connections) {
+        const tbody = document.getElementById('connections-list');
+        tbody.innerHTML = '';
+        
+        if (connections.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4">没有找到任何连接，请点击右上角“新建连接”来创建。</td></tr>`;
+            return;
+        }
+        
+        connections.forEach(conn => {
+            const row = document.createElement('tr');
+            if (conn.is_auto_detected) row.classList.add('auto-detected');
+            
+            const actionsHtml = getActionsHtml(conn);
+
+            row.innerHTML = `
+                <td>
+                    <strong>${conn.name}</strong>
+                    ${conn.autostart ? '<i class="bi bi-lightning-charge-fill text-warning ms-2" title="自动启动"></i>' : ''}
+                    ${conn.is_auto_detected ? '<span class="badge bg-warning text-dark ms-2">自动检测</span>' : ''}
+                    <div class="connection-details mt-1">PID: ${conn.pid || 'N/A'} | ID: ${conn.id || 'N/A'}</div>
+                </td>
+                <td><div style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${conn.command}">${conn.command}</div></td>
+                <td><span class="status-badge ${conn.status === 'running' ? 'status-running' : 'status-stopped'}">${conn.status === 'running' ? '运行中' : '已停止'}</span></td>
+                <td>${conn.created_at ? new Date(conn.created_at).toLocaleString() : '未知'}</td>
+                <td><div class="d-flex">${actionsHtml}</div></td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function getActionsHtml(conn) {
+        if (conn.is_auto_detected) {
+            return `<button class="btn btn-sm btn-danger btn-action" onclick="stopProcess(${conn.pid})"><i class="bi bi-stop-circle"></i> 停止</button>`;
+        }
+
+        let actions = '';
+        if (conn.status === 'running') {
+            actions += `<button class="btn btn-sm btn-danger btn-action" onclick="stopConnection(${conn.id})"><i class="bi bi-stop-circle"></i> 停止</button>`;
+        } else {
+            actions += `<button class="btn btn-sm btn-success btn-action" onclick="startConnection(${conn.id})"><i class="bi bi-play-circle"></i> 启动</button>`;
+            actions += `<button class="btn btn-sm btn-secondary btn-action" onclick="showEditModal(${conn.id})"><i class="bi bi-pencil"></i> 编辑</button>`;
+        }
+        actions += `<button class="btn btn-sm btn-info btn-action" onclick="showLog(${conn.id}, '${conn.name.replace(/'/g, "\\'")}')"><i class="bi bi-journal-text"></i> 日志</button>`;
+        actions += `<button class="btn btn-sm btn-outline-danger btn-action" onclick="deleteConnection(${conn.id})"><i class="bi bi-trash"></i> 删除</button>`;
+        return actions;
+    }
+
+    async function saveConnection() {
+        const connId = document.getElementById('connection-id').value;
+        const name = document.getElementById('connection-name').value;
+        const autostart = document.getElementById('autostart-switch').checked;
+        
+        const isDirectMode = document.getElementById('direct-mode-tab').classList.contains('active');
+        let command = null;
+        let params = null;
+
+        if (isDirectMode) {
+            command = document.getElementById('connection-command').value;
+            if (!command) {
+                showAlert('danger', '直接输入模式下，命令不能为空');
+                return;
+            }
+        } else {
+            params = {};
+            document.querySelectorAll('#params-mode input, #params-mode select').forEach(el => {
+                const key = el.id.replace('param-', '');
+                if (el.type === 'checkbox') {
+                    if (el.checked) params[key] = true;
+                } else if (el.value) {
+                    params[key] = el.value;
+                }
+            });
+        }
+
+        const payload = { name, autostart, command, params };
+        const url = connId ? `/api/connections/${connId}` : '/api/connections';
+        const method = connId ? 'PUT' : 'POST';
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (response.ok) {
+                showAlert('success', result.message || (connId ? '更新成功' : '创建成功'));
+                editModal.hide();
+                loadConnections();
+            } else {
+                showAlert('danger', result.error || '保存失败');
+            }
+        } catch (error) {
+            showAlert('danger', '请求失败，请检查网络或后端服务');
+        }
+    }
+
+    async function startConnection(id) {
+        const response = await fetch(`/api/connections/${id}/start`, { method: 'POST' });
+        handleApiResponse(response);
+    }
+
+    async function stopConnection(id) {
+        const response = await fetch(`/api/connections/${id}/stop`, { method: 'POST' });
+        handleApiResponse(response);
+    }
+    
+    async function stopProcess(pid) {
+        if (confirm(`确定要停止手动进程 ${pid} 吗？`)) {
+            const response = await fetch(`/api/processes/${pid}/stop`, { method: 'POST' });
+            handleApiResponse(response);
+        }
+    }
+
+    async function deleteConnection(id) {
+        if (confirm('确定要删除这个连接吗？此操作不可恢复。')) {
+            const response = await fetch(`/api/connections/${id}`, { method: 'DELETE' });
+            handleApiResponse(response, '删除成功');
+        }
+    }
+
+    async function handleApiResponse(response, successMsg) {
+        try {
+            const result = await response.json();
+            if (response.ok) {
+                showAlert('success', successMsg || result.message || '操作成功');
+                loadConnections();
+            } else {
+                showAlert('danger', result.message || result.error || '操作失败');
+            }
+        } catch (e) {
+            showAlert('danger', '无法解析服务器响应');
+        }
+    }
+
+    async function showLog(id, name) {
+        currentLogId = id;
+        document.getElementById('logModalTitle').textContent = `日志 - ${name}`;
+        document.getElementById('log-content').textContent = '正在加载日志...';
+        const logModal = new bootstrap.Modal(document.getElementById('logModal'));
+        logModal.show();
+        refreshLog();
+    }
+
+    async function refreshLog() {
+        if (!currentLogId) return;
+        try {
+            const response = await fetch(`/api/connections/${currentLogId}/log`);
+            const result = await response.json();
+            document.getElementById('log-content').textContent = response.ok ? (result.log || '日志为空。') : `获取日志失败: ${result.error}`;
+        } catch (error) {
+            document.getElementById('log-content').textContent = `获取日志失败: ${error.message}`;
+        }
+    }
+
+    function showAlert(type, message) {
+        const existingAlert = document.querySelector('.custom-alert');
+        if (existingAlert) existingAlert.remove();
+
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3 custom-alert`;
+        alert.style.zIndex = '1056';
+        alert.role = 'alert';
+        alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => bootstrap.Alert.getOrCreateInstance(alert)?.close(), 5000);
+    }
+
+    function toggleForwardingMethods() {
+        const selectedOS = document.getElementById('param-target_os').value;
+        const isLinux = selectedOS === 'linux';
+        document.querySelectorAll('#param-m .linux-only').forEach(opt => {
+            opt.style.display = isLinux ? '' : 'none';
+        });
+        // 如果当前选中的方法在切换后被隐藏，则重置选择
+        const methodSelect = document.getElementById('param-m');
+        if (methodSelect.selectedOptions.length > 0 && methodSelect.selectedOptions[0].style.display === 'none') {
+            methodSelect.value = '';
+        }
+    }
+</script>
+</body>
+</html>
