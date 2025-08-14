@@ -5,7 +5,7 @@ services:
     # build 指令会告诉 Docker Compose 使用当前目录下的 Dockerfile 来构建镜像
     build: .
     # 给容器起一个易于识别的名称
-    container_name: natter-web-admin
+    container_name: natter-webui
     # 设置网络模式为 host，这是解决 NAT 穿透问题的关键
     network_mode: "host"
     # 设置重启策略。unless-stopped 表示除非手动停止，否则容器总会自动重启

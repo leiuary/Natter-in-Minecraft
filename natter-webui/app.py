@@ -623,7 +623,7 @@ def change_password():
                 c.execute("UPDATE settings SET value = ? WHERE key = 'password_hash'", (new_password_hash,))
                 conn.commit()
                 logger.info(f"用户 {request.remote_addr} 成功修改密码")
-                return jsonify({"success": True, "message": "密码修改成功"})
+                return jsonify({"success": True, "message": "密码修改成功，请重新登录。"})
             else:
                 logger.warning(f"用户 {request.remote_addr} 尝试修改密码失败：旧密码错误")
                 return jsonify({"success": False, "message": "旧密码错误"}), 401
@@ -652,8 +652,8 @@ if __name__ == '__main__':
     
     try:
         logger.info("启动 Natter Web Admin 服务")
-        # 切换到 127.0.0.1 并启用调试模式，以帮助诊断启动问题
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        # 切换到 :: 并启用调试模式，以帮助诊断启动问题
+        app.run(host='::', port=5000, debug=False)
     except Exception as e:
         logger.error(f"服务启动失败: {str(e)}")
         sys.exit(1)

@@ -132,6 +132,12 @@
                     <button class="btn btn-light btn-lg" onclick="showCreateModal()">
                         <i class="bi bi-plus-circle"></i> 新建连接
                     </button>
+                    <button class="btn btn-outline-light btn-lg ms-2" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                        <i class="bi bi-key"></i> 修改密码
+                    </button>
+                    <a href="/logout" class="btn btn-outline-warning btn-lg ms-2">
+                        <i class="bi bi-box-arrow-right"></i> 退出登录
+                    </a>
                 </div>
             </div>
         </div>
@@ -197,6 +203,38 @@
         </div>
     </div>
 
+    <!-- 修改密码模态框 -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changePasswordModalLabel">修改密码</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="change-password-form">
+                        <div class="mb-3">
+                            <label for="old-password" class="form-label">旧密码</label>
+                            <input type="password" class="form-control" id="old-password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-password" class="form-label">新密码</label>
+                            <input type="password" class="form-control" id="new-password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm-new-password" class="form-label">确认新密码</label>
+                            <input type="password" class="form-control" id="confirm-new-password" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="changePassword()">保存更改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 新建/编辑连接模态框 -->
     <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -242,16 +280,16 @@
                                     <div class="form-check"><input class="form-check-input" type="checkbox" id="param-q"><label for="param-q">地址改变时退出 (-q)</label></div>
                                     <div class="form-check"><input class="form-check-input" type="checkbox" id="param-u"><label for="param-u">UDP 模式 (-u)</label></div>
                                     <div class="form-check"><input class="form-check-input" type="checkbox" id="param-U"><label for="param-U">启用 UPnP (-U)</label></div>
-                                    <div class="mb-2"><label class="form-label">保活间隔 (-k)</label><input type="number" class="form-control" id="param-k" placeholder="默认 15"></div>
-                                    <div class="mb-2"><label class="form-label">STUN 服务器 (-s)</label><input type="text" class="form-control" id="param-s" placeholder="可选"></div>
-                                    <div class="mb-2"><label class="form-label">保活服务器 (-h)</label><input type="text" class="form-control" id="param-h" placeholder="可选"></div>
-                                    <div class="mb-2"><label class="form-label">通知脚本 (-e)</label><input type="text" class="form-control" id="param-e" placeholder="可选"></div>
+                                    <div class="mb-2><label class="form-label">保活间隔 (-k)</label><input type="number" class="form-control" id="param-k" placeholder="默认 15"></div>
+                                    <div class="mb-2><label class="form-label">STUN 服务器 (-s)</label><input type="text" class="form-control" id="param-s" placeholder="可选"></div>
+                                    <div class="mb-2><label class="form-label">保活服务器 (-h)</label><input type="text" class="form-control" id="param-h" placeholder="可选"></div>
+                                    <div class="mb-2><label class="form-label">通知脚本 (-e)</label><input type="text" class="form-control" id="param-e" placeholder="可选"></div>
                                 </div>
                                 <div class="col-md-6">
                                     <h6>绑定与转发</h6>
-                                    <div class="mb-2"><label class="form-label">绑定接口 (-i)</label><input type="text" class="form-control" id="param-i" placeholder="默认 0.0.0.0"></div>
-                                    <div class="mb-2"><label class="form-label">绑定端口 (-b)</label><input type="number" class="form-control" id="param-b" placeholder="默认随机"></div>
-                                    <div class="mb-2"><label class="form-label">转发方法 (-m)</label>
+                                    <div class="mb-2><label class="form-label">绑定接口 (-i)</label><input type="text" class="form-control" id="param-i" placeholder="默认 0.0.0.0"></div>
+                                    <div class="mb-2><label class="form-label">绑定端口 (-b)</label><input type="number" class="form-control" id="param-b" placeholder="默认随机"></div>
+                                    <div class="mb-2><label class="form-label">转发方法 (-m)</label>
                                         <select class="form-select" id="param-m">
                                             <option value="">自动</option>
                                             <option value="none">none</option>
@@ -263,8 +301,8 @@
                                             <option value="socket">socket</option>
                                         </select>
                                     </div>
-                                    <div class="mb-2"><label class="form-label">转发目标IP (-t)</label><input type="text" class="form-control" id="param-t" placeholder="默认本机"></div>
-                                    <div class="mb-2"><label class="form-label">转发目标端口 (-p)</label><input type="number" class="form-control" id="param-p" placeholder="可选"></div>
+                                    <div class="mb-2><label class="form-label">转发目标IP (-t)</label><input type="text" class="form-control" id="param-t" placeholder="默认本机"></div>
+                                    <div class="mb-2><label class="form-label">转发目标端口 (-p)</label><input type="number" class="form-control" id="param-p" placeholder="可选"></div>
                                     <div class="form-check"><input class="form-check-input" type="checkbox" id="param-r"><label for="param-r">重试直至目标开放 (-r)</label></div>
                                 </div>
                             </div>
@@ -310,7 +348,7 @@
     <!-- 页脚 -->
     <footer class="footer">
         <div class="container text-center">
-            <p class="mb-0">Natter Web Admin | &copy; 2023-2024 Natter 项目</p>
+            <p class="mb-0">Natter Web UI | Build by Gemini </p>
         </div>
     </footer>
 
@@ -325,6 +363,21 @@
         setInterval(loadConnections, 10000);
         document.getElementById('save-connection-btn').addEventListener('click', saveConnection);
         document.getElementById('param-target_os').addEventListener('change', toggleForwardingMethods);
+        
+        // 密码验证
+        const newPassword = document.getElementById('new-password');
+        const confirmNewPassword = document.getElementById('confirm-new-password');
+        
+        const validateNewPassword = () => {
+            if (newPassword.value !== confirmNewPassword.value) {
+                confirmNewPassword.setCustomValidity("两次输入的密码不匹配。");
+            } else {
+                confirmNewPassword.setCustomValidity('');
+            }
+        };
+        
+        newPassword.addEventListener('change', validateNewPassword);
+        confirmNewPassword.addEventListener('keyup', validateNewPassword);
     });
 
     function showCreateModal() {
@@ -583,6 +636,43 @@
         const methodSelect = document.getElementById('param-m');
         if (methodSelect.selectedOptions.length > 0 && methodSelect.selectedOptions[0].style.display === 'none') {
             methodSelect.value = '';
+        }
+    }
+
+    async function changePassword() {
+        const oldPassword = document.getElementById('old-password').value;
+        const newPassword = document.getElementById('new-password').value;
+        const confirmNewPassword = document.getElementById('confirm-new-password').value;
+
+        if (!oldPassword || !newPassword || !confirmNewPassword) {
+            showAlert('warning', '所有字段均为必填项。');
+            return;
+        }
+
+        if (newPassword !== confirmNewPassword) {
+            showAlert('danger', '新密码和确认密码不匹配。');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                showAlert('success', result.message);
+                bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+                // 密码修改成功后，后端 session 会失效，前端需要跳转到登录页
+                setTimeout(() => {
+                    window.location.href = '/logout';
+                }, 2000);
+            } else {
+                showAlert('danger', result.message || '密码修改失败。');
+            }
+        } catch (error) {
+            showAlert('danger', '请求失败，请检查网络连接。');
         }
     }
 </script>

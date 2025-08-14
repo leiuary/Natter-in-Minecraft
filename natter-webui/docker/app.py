@@ -609,23 +609,27 @@ def change_password():
     new_password = data.get('new_password')
 
     if not old_password or not new_password:
-        return jsonify({"error": "缺少旧密码或新密码"}), 400
+        return jsonify({"success": False, "message": "必须提供旧密码和新密码。"}), 400
 
+    db_path = app.config['DATABASE']
     try:
-        with sqlite3.connect(app.config['DATABASE']) as conn:
+        with sqlite3.connect(db_path) as conn:
             c = conn.cursor()
-            c.execute("SELECT * FROM users WHERE username = ?", (session['username'],))
-            user = c.fetchone()
+            c.execute("SELECT value FROM settings WHERE key = 'password_hash'")
+            password_hash_row = c.fetchone()
 
-            if user and check_password_hash(user[2], old_password):
+            if password_hash_row and check_password_hash(password_hash_row[0], old_password):
                 new_password_hash = generate_password_hash(new_password)
-                c.execute("UPDATE users SET password = ? WHERE username = ?", (new_password_hash, session['username']))
+                c.execute("UPDATE settings SET value = ? WHERE key = 'password_hash'", (new_password_hash,))
                 conn.commit()
-                return jsonify({"success": True, "message": "密码修改成功"})
+                logger.info(f"用户 {request.remote_addr} 成功修改密码")
+                return jsonify({"success": True, "message": "密码修改成功，请重新登录。"})
             else:
-                return jsonify({"error": "旧密码错误"}), 401
+                logger.warning(f"用户 {request.remote_addr} 尝试修改密码失败：旧密码错误")
+                return jsonify({"success": False, "message": "旧密码错误"}), 401
     except Exception as e:
-        return jsonify({"error": f"内部错误: {str(e)}"}), 500
+        logger.error(f"修改密码时发生内部错误: {e}")
+        return jsonify({"success": False, "message": f"内部错误: {str(e)}"}), 500
 
 
 # --- 前端页面 ---
@@ -648,8 +652,8 @@ if __name__ == '__main__':
     
     try:
         logger.info("启动 Natter Web Admin 服务")
-        # 切换到 ::1 并启用调试模式，以帮助诊断启动问题
-        app.run(host='::1', port=5000, debug=False)
+        # 切换到 :: 并启用调试模式，以帮助诊断启动问题
+        app.run(host='::', port=5000, debug=False)
     except Exception as e:
         logger.error(f"服务启动失败: {str(e)}")
         sys.exit(1)
