@@ -494,6 +494,65 @@ def get_connection_log(conn_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/port/<int:port>/processes', methods=['GET'])
+@login_required
+def get_processes_by_port_api(port):
+    """获取指定端口上监听的进程列表"""
+    processes = []
+    try:
+        # 遍历所有网络连接
+        for conn in psutil.net_connections(kind='inet'):
+            # 检查本地地址端口是否匹配且连接状态为 LISTEN
+            if conn.laddr.port == port and conn.status == 'LISTEN':
+                try:
+                    p = psutil.Process(conn.pid)
+                    processes.append({
+                        'pid': p.pid,
+                        'name': p.name(),
+                        'username': p.username(),
+                        'create_time': datetime.fromtimestamp(p.create_time()).isoformat()
+                    })
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    # 如果进程在查询时已经不存在或无权访问，则跳过
+                    continue
+        logger.info(f"成功查询端口 {port} 的占用情况，找到 {len(processes)} 个进程。")
+        return jsonify(processes)
+    except Exception as e:
+        logger.error(f"获取端口 {port} 的进程列表时出错: {str(e)}")
+        return jsonify({"error": f"获取进程列表时出错: {str(e)}"}), 500
+
+
+@app.route('/api/change-password', methods=['POST'])
+@login_required
+def change_password():
+    data = request.get_json()
+    old_password = data.get('old_password')
+    new_password = data.get('new_password')
+
+    if not old_password or not new_password:
+        return jsonify({"success": False, "message": "必须提供旧密码和新密码。"}), 400
+
+    db_path = app.config['DATABASE']
+    try:
+        with sqlite3.connect(db_path) as conn:
+            c = conn.cursor()
+            c.execute("SELECT value FROM settings WHERE key = 'password_hash'")
+            password_hash_row = c.fetchone()
+
+            if password_hash_row and check_password_hash(password_hash_row[0], old_password):
+                new_password_hash = generate_password_hash(new_password)
+                c.execute("UPDATE settings SET value = ? WHERE key = 'password_hash'", (new_password_hash,))
+                conn.commit()
+                logger.info(f"用户 {request.remote_addr} 成功修改密码")
+                return jsonify({"success": True, "message": "密码修改成功，请重新登录。"})
+            else:
+                logger.warning(f"用户 {request.remote_addr} 尝试修改密码失败：旧密码错误")
+                return jsonify({"success": False, "message": "旧密码错误"}), 401
+    except Exception as e:
+        logger.error(f"修改密码时发生内部错误: {e}")
+        return jsonify({"success": False, "message": f"内部错误: {str(e)}"}), 500
+
+
 # --- 认证路由 ---
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -601,37 +660,6 @@ def logout():
     session.pop('logged_in', None)
     return redirect(url_for('login'))
 
-@app.route('/api/change-password', methods=['POST'])
-@login_required
-def change_password():
-    data = request.get_json()
-    old_password = data.get('old_password')
-    new_password = data.get('new_password')
-
-    if not old_password or not new_password:
-        return jsonify({"success": False, "message": "必须提供旧密码和新密码。"}), 400
-
-    db_path = app.config['DATABASE']
-    try:
-        with sqlite3.connect(db_path) as conn:
-            c = conn.cursor()
-            c.execute("SELECT value FROM settings WHERE key = 'password_hash'")
-            password_hash_row = c.fetchone()
-
-            if password_hash_row and check_password_hash(password_hash_row[0], old_password):
-                new_password_hash = generate_password_hash(new_password)
-                c.execute("UPDATE settings SET value = ? WHERE key = 'password_hash'", (new_password_hash,))
-                conn.commit()
-                logger.info(f"用户 {request.remote_addr} 成功修改密码")
-                return jsonify({"success": True, "message": "密码修改成功，请重新登录。"})
-            else:
-                logger.warning(f"用户 {request.remote_addr} 尝试修改密码失败：旧密码错误")
-                return jsonify({"success": False, "message": "旧密码错误"}), 401
-    except Exception as e:
-        logger.error(f"修改密码时发生内部错误: {e}")
-        return jsonify({"success": False, "message": f"内部错误: {str(e)}"}), 500
-
-
 # --- 前端页面 ---
 
 @app.route('/')
@@ -653,7 +681,7 @@ if __name__ == '__main__':
     try:
         logger.info("启动 Natter Web Admin 服务")
         # 切换到 :: 并启用调试模式，以帮助诊断启动问题
-        app.run(host='::', port=5000, debug=False)
+        app.run(host='::', port=5000, debug=True)
     except Exception as e:
         logger.error(f"服务启动失败: {str(e)}")
         sys.exit(1)

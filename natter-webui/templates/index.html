@@ -288,14 +288,19 @@
                                 <div class="col-md-6">
                                     <h6>绑定与转发</h6>
                                     <div class="mb-2><label class="form-label">绑定接口 (-i)</label><input type="text" class="form-control" id="param-i" placeholder="默认 0.0.0.0"></div>
-                                    <div class="mb-2><label class="form-label">绑定端口 (-b)</label><input type="number" class="form-control" id="param-b" placeholder="默认随机"></div>
+                                    <div class="mb-2><label class="form-label">绑定端口 (-b)</label><input type="number" class="form-control" id="param-b" placeholder="默认随机"><div id="port-usage-feedback"></div></div>
                                     <div class="mb-2><label class="form-label">转发方法 (-m)</label>
                                         <select class="form-select" id="param-m">
                                             <option value="">自动</option>
-                                            <option value="none">none</option>
                                             <option value="test">test</option>
                                             <option value="iptables" class="linux-only">iptables</option>
+                                            <option value="iptables-snat" class="linux-only">iptables-snat</option>
+                                            <option value="sudo-iptables" class="linux-only">sudo-iptables</option>
+                                            <option value="sudo-iptables-snat" class="linux-only">sudo-iptables-snat</option>
                                             <option value="nftables" class="linux-only">nftables</option>
+                                            <option value="nftables-snat" class="linux-only">nftables-snat</option>
+                                            <option value="sudo-nftables" class="linux-only">sudo-nftables</option>
+                                            <option value="sudo-nftables-snat" class="linux-only">sudo-nftables-snat</option>
                                             <option value="socat">socat</option>
                                             <option value="gost">gost</option>
                                             <option value="socket">socket</option>
@@ -348,7 +353,7 @@
     <!-- 页脚 -->
     <footer class="footer">
         <div class="container text-center">
-            <p class="mb-0">Natter Web UI | Build by Gemini </p>
+            <p class="mb-0">Natter Web UI | Build by AI </p>
         </div>
     </footer>
 
@@ -364,6 +369,10 @@
         document.getElementById('save-connection-btn').addEventListener('click', saveConnection);
         document.getElementById('param-target_os').addEventListener('change', toggleForwardingMethods);
         
+        // 端口占用检查
+        const portInput = document.getElementById('param-b');
+        portInput.addEventListener('blur', checkPortUsage);
+
         // 密码验证
         const newPassword = document.getElementById('new-password');
         const confirmNewPassword = document.getElementById('confirm-new-password');
@@ -624,6 +633,42 @@
         document.body.appendChild(alert);
         
         setTimeout(() => bootstrap.Alert.getOrCreateInstance(alert)?.close(), 5000);
+    }
+
+    async function checkPortUsage() {
+        const port = document.getElementById('param-b').value;
+        const portFeedback = document.getElementById('port-usage-feedback');
+        if (!port) {
+            portFeedback.innerHTML = '';
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/port/${port}/processes`);
+            const processes = await response.json();
+
+            if (response.ok) {
+                if (processes.length > 0) {
+                    let processList = processes.map(p => `<li>PID: ${p.pid}, 名称: ${p.name}, 用户: ${p.username}</li>`).join('');
+                    portFeedback.innerHTML = `
+                        <div class="text-danger mt-2">
+                            <i class="bi bi-exclamation-triangle-fill"></i> <strong>警告:</strong> 端口 ${port} 已被以下进程占用:
+                            <ul>${processList}</ul>
+                        </div>
+                    `;
+                } else {
+                    portFeedback.innerHTML = `
+                        <div class="text-success mt-2">
+                            <i class="bi bi-check-circle-fill"></i> 端口 ${port} 当前可用。
+                        </div>
+                    `;
+                }
+            } else {
+                 portFeedback.innerHTML = `<div class="text-warning mt-2">无法检查端口状态: ${processes.error}</div>`;
+            }
+        } catch (error) {
+            portFeedback.innerHTML = `<div class="text-warning mt-2">检查端口状态时出错。</div>`;
+        }
     }
 
     function toggleForwardingMethods() {
