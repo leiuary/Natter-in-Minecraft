@@ -8,6 +8,8 @@
 
 项目主页有详细说明[Natter](https://github.com/MikeWang000000/Natter?tab=readme-ov-file)
 
+[webui（测试版）](/natter-webui/README.md)
+
 ## 我可以使用吗
 
 将光猫改成桥接模式并使用电脑拨号连接到互联网，运行 natter-check ，如果 TCP 与 UDP 都是 NAT 1 ，说明运营商没有限制，可以使用。
